@@ -1,7 +1,18 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "compilerOptions": {
+    "jsx": "react-jsx", // Enables the new JSX transform for React 17+
+    "lib": ["DOM", "DOM.Iterable", "ESNext"], // Includes DOM library
+    "target": "ESNext", // Modern JavaScript target
+    "module": "ESNext",
+    "moduleResolution": "Node", // Node-style module resolution
+    "strict": false, // Enables strict type-checking options
+    "esModuleInterop": true, // Better compatibility with CommonJS
+    "skipLibCheck": true, // Skips type-checking of all declaration files
+    "forceConsistentCasingInFileNames": true, // Enforce consistent file casing
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"], // Include only the src folder for type checking
+  "exclude": ["node_modules", "dist"] // Exclude node_modules and dist
 }
