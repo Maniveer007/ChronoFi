@@ -8,6 +8,7 @@ import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
 import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
 import { createConfig, WagmiProvider, useAccount } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GlobalContextProvider } from "@/lib/context/GlobalContextProvider";
 import { config } from "@/lib/config";
 import { ToastContainer } from "react-toastify";
 
@@ -17,17 +18,19 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <DynamicContextProvider
       settings={{
-        environmentId: "004d2f05-6fbc-403d-9c52-6aa50b830b2f",
+        environmentId: "f9a99ed1-32d1-4428-8d29-ad5af938b903",
         walletConnectors: [EthereumWalletConnectors],
       }}
     >
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <DynamicWagmiConnector>
-            <BrowserRouter>
-              <ToastContainer />
-              <App />
-            </BrowserRouter>
+            <GlobalContextProvider>
+              <BrowserRouter>
+                <ToastContainer />
+                <App />
+              </BrowserRouter>
+            </GlobalContextProvider>
           </DynamicWagmiConnector>
         </QueryClientProvider>
       </WagmiProvider>

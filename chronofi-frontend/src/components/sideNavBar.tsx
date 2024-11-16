@@ -1,28 +1,28 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom"; // Import Link from react-router-dom
+import { Link } from "react-router-dom";
 import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
+import { FiMenu, FiX, FiHome, FiPlus, FiDatabase, FiDollarSign, FiUserCheck } from "react-icons/fi"; // Modern icons
 
 const SideNavBar = () => {
   const [isOpen, setIsOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // Determine if the screen is mobile
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const navItems = [
-    { name: "Create", href: "/create" },
-    { name: "Dashboard", href: "/dashboard" },
-    { name: "Transactions", href: "/transactions" },
-    { name: "Faucet", href: "/faucet" },
-    { name: "VerifyGoldUser", href: "/verify-gold-user" },
+    { name: "Create", href: "/create", icon: <FiPlus /> },
+    { name: "Dashboard", href: "/dashboard", icon: <FiDatabase /> },
+    { name: "Transactions", href: "/transactions", icon: <FiDollarSign /> },
+    { name: "Faucet", href: "/faucet", icon: <FiDollarSign /> },
+    { name: "Verify Gold User", href: "/verify-gold-user", icon: <FiUserCheck /> },
   ];
-  const toggle = () => {
-    setIsOpen((prev) => !prev);
-  };
+
+  const toggle = () => setIsOpen((prev) => !prev);
 
   const handleResize = () => {
     setIsMobile(window.innerWidth <= 768);
     if (window.innerWidth <= 768) {
       setIsOpen(false);
     } else {
-      setIsOpen(true); // Keep sidebar open on larger screens
+      setIsOpen(true);
     }
   };
 
@@ -31,72 +31,81 @@ const SideNavBar = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Function to handle navigation item click
   const handleNavItemClick = () => {
     if (isMobile) {
-      setIsOpen(false); // Close sidebar on mobile when nav item is clicked
+      setIsOpen(false);
     }
   };
 
   return (
-    <div className="flex h-screen fixed bg-blue-500 top-0 text-white ">
+    <div className="flex h-screen fixed top-0 bg-gray-100">
       {/* Sidebar */}
       <aside
-        className={`w-64  h-full transition-transform duration-300 ${
+        className={`z-50 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 shadow-xl h-full transition-transform duration-300 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } ${isMobile ? "fixed" : "relative"}`}
+        } ${isMobile ? "fixed" : "relative"} w-64 rounded-r-xl`}
       >
+        {/* Sidebar Header */}
         <div className="p-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-blue-600 cursor-pointer">
-            <Link to="/" className="no-underline text-blue-600">
-              Project
+          <h2 className="text-3xl font-bold text-white">
+            <Link to="/" className="no-underline">
+              MyApp
             </Link>
           </h2>
-          {isMobile &&
-            isOpen && ( // Only show X on mobile and when sidebar is open
-              <a
-                onClick={toggle}
-                className="text-3xl cursor-pointer text-black "
-                aria-label="Close sidebar"
-              >
-                ✖ {/* X icon to close sidebar */}
-              </a>
-            )}
+          {isMobile && isOpen && (
+            <button
+              onClick={toggle}
+              className="text-white text-2xl focus:outline-none"
+              aria-label="Close sidebar"
+            >
+              <FiX />
+            </button>
+          )}
         </div>
 
-        {(isOpen || !isMobile) && ( // Show nav items if open or on larger screens
-          <nav className="mt-8">
-            {navItems.map((item) => (
-              <Link key={item.name} to={item.href}>
-                <button
-                  onClick={handleNavItemClick} // Close sidebar on nav item click
-                  className="flex items-center w-full text-left px-4 py-5 text-gray-700 hover:bg-blue-100"
-                >
-                  {item.name}
-                </button>
-              </Link>
-            ))}
-          </nav>
-        )}
+        {/* Profile Section */}
+        <div className="flex flex-col items-center py-6">
+          <div className="w-20 h-20 rounded-full bg-white shadow-md flex items-center justify-center">
+            <img
+              src="https://via.placeholder.com/80"
+              alt="Profile"
+              className="rounded-full"
+            />
+          </div>
+          <h3 className="mt-4 text-lg font-semibold text-white">John Doe</h3>
+          <p className="text-sm text-gray-200">Gold Member</p>
+        </div>
 
-        {(isOpen || !isMobile) && ( // Show nav items if open or on larger screens
-          <nav className="mt-8">
-            <DynamicWidget />
-          </nav>
-        )}
+        {/* Navigation Items */}
+        <nav className="mt-8">
+          {navItems.map((item) => (
+            <Link key={item.name} to={item.href}>
+              <button
+                onClick={handleNavItemClick}
+                className="flex items-center w-full px-6 py-4 text-white hover:bg-white hover:text-blue-600 transition duration-300 rounded-lg"
+              >
+                <span className="mr-4 text-xl">{item.icon}</span>
+                <span className="text-lg font-medium">{item.name}</span>
+              </button>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Dynamic Widget */}
+        <div className="mt-auto p-4">
+          <DynamicWidget />
+        </div>
       </aside>
 
-      {/* Hamburger icon for mobile view */}
+      {/* Hamburger Icon */}
       {isMobile && !isOpen && (
-        <div className="p-4">
-          <a
-            onClick={toggle}
-            className="text-3xl cursor-pointer"
-            aria-label="Open sidebar"
-          >
-            ☰ {/* Hamburger icon */}
-          </a>
-        </div>
+        <button
+          onClick={toggle}
+          className="p-4 text-3xl text-blue-600 focus:outline-none"
+          aria-label="Open sidebar"
+        >
+          <FiMenu />
+        </button>
       )}
     </div>
   );
