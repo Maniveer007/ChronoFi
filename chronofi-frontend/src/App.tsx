@@ -18,7 +18,7 @@ function App() {
         <SideNavbar />
       </div>
       {/* Main content area with left margin to avoid overlap */}
-      <div className="flex justify-center items-start w-full h-full text-black bg-white">
+      <div className="flex justify-center items-start w-full h-full ">
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<HomePage />} />

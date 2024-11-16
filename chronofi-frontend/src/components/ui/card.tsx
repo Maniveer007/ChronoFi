@@ -14,8 +14,8 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border border-gray-200 bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg transition-transform hover:scale-[1.02] max-h-[90vh] overflow-auto",
-      "w-full sm:w-3/4 lg:w-1/2 mx-auto", // Responsive width
+      "rounded-xl border border-gray-200 bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg transition-transform hover:scale-[1.02] min-h-screen w-full overflow-auto",
+      "px-4 py-6 md:px-8 lg:px-12", // Add responsive padding
       className
     )}
     {...props}
@@ -31,7 +31,7 @@ const CardHeader = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex flex-col space-y-1.5 p-6 border-b border-gray-300 bg-opacity-10",
+      "flex flex-col space-y-1.5 p-6 border-b border-gray-300 bg-opacity-10 w-full",
       className
     )}
     {...props}
@@ -47,7 +47,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-bold leading-tight tracking-wide text-white", // Reduced text size
+      "text-3xl font-bold leading-tight tracking-wide text-white",
       className
     )}
     {...props}
@@ -63,7 +63,7 @@ const CardDescription = React.forwardRef<
   <p
     ref={ref}
     className={cn(
-      "text-sm text-gray-300 leading-relaxed tracking-wide", // Reduced text size for long descriptions
+      "text-lg text-gray-300 leading-relaxed tracking-wide",
       className
     )}
     {...props}
@@ -76,7 +76,11 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 bg-opacity-20", className)} {...props} />
+  <div
+    ref={ref}
+    className={cn("p-6 bg-opacity-20 w-full flex-grow", className)}
+    {...props}
+  />
 ));
 CardContent.displayName = "CardContent";
 
@@ -88,7 +92,7 @@ const CardFooter = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex items-center p-4 border-t border-gray-300 bg-opacity-10", // Reduced padding for footer
+      "flex items-center p-6 border-t border-gray-300 bg-opacity-10 w-full",
       className
     )}
     {...props}

@@ -7,6 +7,7 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaCog,
+  FaExternalLinkAlt,
 } from "react-icons/fa";
 import { useGlobalContext } from "@/lib/context/GlobalContextProvider";
 import { ChronoFiAbi } from "@/lib/abi/ChronoFiAbi";
@@ -64,6 +65,8 @@ function SubscriptionPage() {
 
   if (data === undefined) return <p>Subscription not found.</p>;
 
+  console.log(data);
+
   const subscription = data as Subscription;
   const name = subscription.name;
   const recipient = subscription.recipient;
@@ -71,6 +74,7 @@ function SubscriptionPage() {
   const amountInUSD = Number(subscription.amountInUSD).toFixed(2);
   const nextPaymentDate = Number(subscription.nextPaymentDate);
   const hasExited = Boolean(subscription.hasExited);
+  const attestationId = subscription.attestationId;
 
   const currentTime = Date.now();
   const nextPaymentDue = new Date(nextPaymentDate * 1000);
@@ -126,9 +130,27 @@ function SubscriptionPage() {
     });
   };
 
+  const handleAttestationClick = () => {
+    console.log(attestationId);
+
+    const hexAttestationId = attestationId.toString(16);
+    window.open(
+      `https://testnet-scan.sign.global/attestation/onchain_evm_11155111_0x${hexAttestationId}`,
+      "_blank"
+    );
+  };
+
   return (
     <div className="subscription-detail p-8 rounded-lg shadow-2xl bg-gray-100 text-gray-800 space-y-6">
-      <h2 className="text-3xl font-extrabold text-blue-700 mb-4">{name}</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-extrabold text-blue-700 mb-4">{name}</h2>
+        <button
+          onClick={handleAttestationClick}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
+        >
+          <FaExternalLinkAlt /> View Attestation
+        </button>
+      </div>
 
       <div className="text-xl font-medium flex items-center space-x-2">
         <FaDollarSign className="text-green-500" />
@@ -184,15 +206,6 @@ function SubscriptionPage() {
           </button>
         </div>
       )}
-
-      {/* {isDue && (
-        <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md">
-          <p>
-            <FaExclamationTriangle className="inline mr-2" /> Payment is due!
-            Ensure sufficient funds or increase allowance as needed.
-          </p>
-        </div>
-      )} */}
     </div>
   );
 }

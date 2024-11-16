@@ -31,8 +31,8 @@ export default function FaucetPage() {
     setClaimingStates((prev) => ({ ...prev, [tokenId]: true }));
 
     const mintAmount = isEarlyUser
-      ? chroniclePriceFeed[tokenId]?.amount * 2
-      : chroniclePriceFeed[tokenId]?.amount;
+      ? chroniclePriceFeed[tokenId - 1]?.amount * 2
+      : chroniclePriceFeed[tokenId - 1]?.amount;
 
     // Simulating API call
 
@@ -49,7 +49,7 @@ export default function FaucetPage() {
       return;
     }
     await writeContractAsync({
-      address: chroniclePriceFeed[tokenId]?.address,
+      address: chroniclePriceFeed[tokenId - 1]?.address,
       abi: ERC20ABI,
       functionName: "mint",
       args: [userAddress, mintAmount * 10 ** 18],
@@ -113,7 +113,7 @@ export default function FaucetPage() {
                   <Button
                     onClick={() => handleClaim(token.id)}
                     disabled={claimingStates[token.id]}
-                    className={`transition-all duration-200 ease-in-out transform ${
+                    className={`transition-all duration-200 ease-in-out transform text-black ${
                       claimingStates[token.id]
                         ? "scale-95 opacity-75"
                         : "hover:scale-105"
@@ -152,7 +152,7 @@ export default function FaucetPage() {
                 <Button
                   onClick={() => handleClaim(11)}
                   disabled={claimingStates[11]}
-                  className={`transition-all duration-200 ease-in-out transform ${
+                  className={`transition-all duration-200 ease-in-out transform text-black ${
                     claimingStates[11]
                       ? "scale-95 opacity-75"
                       : "hover:scale-105"

@@ -7,10 +7,10 @@ export const GlobalContext = createContext(undefined);
 export const GlobalContextProvider = ({ children }) => {
   const { address: userAddress, chain, chainId } = useAccount();
   const BervisRequestAddress = "0x841ce48F9446C8E281D3F1444cB859b4A6D0738C";
-  const ChronoFiAddress = "0x53cc6464b19fdA899cbAE9eDdd7481CAea16fC20";
+  const ChronoFiAddress = "0x9d564Dc4e20ab5d3991e2D6FB56E7F34861599df";
   const ChronoToken = "0x303860D21B14B8d2072AF6FDf8345e1d9311630B";
   const PriceOracleAddress = "0x462be78d6dfaCEF20C460edBa701F66935082ca8";
-  const schemaId = "0x2f8";
+  const schemaId = "0x309";
   const { data: isEarlyUser } = useReadContract({
     address: ChronoFiAddress,
     functionName: "EarlyUser",

@@ -8,6 +8,7 @@ import {
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useAccount } from "wagmi";
+import { chroniclePriceFeed } from "@/lib/chroniclePriceFeed/chroniclePriceFeed";
 
 function SubscriptionCard({ subscription, index }) {
   const { address } = useAccount();
@@ -21,15 +22,17 @@ function SubscriptionCard({ subscription, index }) {
     hasExited,
   } = subscription;
 
+  const tokenDetails = chroniclePriceFeed.find(
+    (token) => token.address.toLowerCase() === paymentToken.toLowerCase()
+  );
+
   amountInUSD = Number(amountInUSD);
   nextPaymentDate = Number(nextPaymentDate);
-  //   hasExited = Boolean(!hasExited);
 
   const currentTime = Date.now();
   const nextPaymentDue = nextPaymentDate * 1000;
 
   console.log(nextPaymentDue);
-
   console.log(currentTime);
 
   const isDue = nextPaymentDue < currentTime;
@@ -67,9 +70,19 @@ function SubscriptionCard({ subscription, index }) {
         <p className="text-gray-600">
           <strong>Recipient:</strong> {recipient}
         </p>
-        <p className="text-gray-600">
-          <strong>Token:</strong> {paymentToken}
-        </p>
+        <div className="flex items-center gap-2 text-gray-600">
+          <strong>Token:</strong>
+          {tokenDetails && (
+            <>
+              <img
+                src={tokenDetails.logo}
+                alt={tokenDetails.name}
+                className="w-5 h-5"
+              />
+              <span>{tokenDetails.name}</span>
+            </>
+          )}
+        </div>
         <p className="text-gray-800 font-semibold">
           <strong>Amount in USD:</strong> ${amountInUSD}
         </p>

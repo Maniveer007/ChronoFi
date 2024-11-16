@@ -1,18 +1,33 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
-import { FiMenu, FiX, FiHome, FiPlus, FiDatabase, FiDollarSign, FiUserCheck } from "react-icons/fi"; // Modern icons
+import {
+  FiMenu,
+  FiX,
+  FiHome,
+  FiPlus,
+  FiDatabase,
+  FiDollarSign,
+  FiUserCheck,
+} from "react-icons/fi";
+import { useGlobalContext } from "@/lib/context/GlobalContextProvider";
+// import { useGlobalContext } from "../context/GlobalContext";
 
 const SideNavBar = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { address, isEarlyUser } = useGlobalContext();
 
   const navItems = [
     { name: "Create", href: "/create", icon: <FiPlus /> },
     { name: "Dashboard", href: "/dashboard", icon: <FiDatabase /> },
     { name: "Transactions", href: "/transactions", icon: <FiDollarSign /> },
     { name: "Faucet", href: "/faucet", icon: <FiDollarSign /> },
-    { name: "Verify Gold User", href: "/verify-gold-user", icon: <FiUserCheck /> },
+    {
+      name: "Verify Gold User",
+      href: "/verify-gold-user",
+      icon: <FiUserCheck />,
+    },
   ];
 
   const toggle = () => setIsOpen((prev) => !prev);
@@ -35,6 +50,11 @@ const SideNavBar = () => {
     if (isMobile) {
       setIsOpen(false);
     }
+  };
+
+  const shortenAddress = (address: string) => {
+    if (!address) return "";
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   return (
@@ -66,14 +86,14 @@ const SideNavBar = () => {
         {/* Profile Section */}
         <div className="flex flex-col items-center py-6">
           <div className="w-20 h-20 rounded-full bg-white shadow-md flex items-center justify-center">
-            <img
-              src="https://via.placeholder.com/80"
-              alt="Profile"
-              className="rounded-full"
-            />
+            <img src="/avatar.jpeg" alt="Profile" className="rounded-full" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold text-white">John Doe</h3>
-          <p className="text-sm text-gray-200">Gold Member</p>
+          <h3 className="mt-4 text-lg font-semibold text-white">
+            {shortenAddress(address)}
+          </h3>
+          <p className="text-sm text-gray-200">
+            {isEarlyUser ? "Gold User" : "Bronze User"}
+          </p>
         </div>
 
         {/* Navigation Items */}

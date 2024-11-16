@@ -172,7 +172,7 @@ app.post("/request-verify-with-bervis", async (req: Request, res: Response) => {
     console.log("proof", proofRes.proof);
 
     try {
-      const callbackaddress = "0x53cc6464b19fdA899cbAE9eDdd7481CAea16fC20";
+      const callbackaddress = "0x9d564Dc4e20ab5d3991e2D6FB56E7F34861599df";
 
       const brevisRes = await brevis.submit(
         proofReq,
