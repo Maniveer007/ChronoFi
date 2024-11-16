@@ -3,157 +3,311 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import {ISP} from "@ethsign/sign-protocol-evm/src/interfaces/ISP.sol";
+import {Attestation} from "@ethsign/sign-protocol-evm/src/models/Attestation.sol";
+import {DataLocation} from "@ethsign/sign-protocol-evm/src/models/DataLocation.sol";
+import {ISPHook} from "@ethsign/sign-protocol-evm/src/interfaces/ISPHook.sol";
+import "./lib/BrevisAppZkOnly.sol";
+import "./ChronofiPriceOracle.sol";
 
-contract ChronoFi is ReentrancyGuard {
+contract ChronoFi is ReentrancyGuard, BrevisAppZkOnly, ISPHook, Ownable {
     using SafeERC20 for IERC20;
 
-    struct Subscription {
+    ISP public spInstance;
+    uint64 public schemaId;
+
+    struct PaymentIntent {
         string name;
-        address subscriptionOwner;
-        address payable recipient;
-        address paymentToken; // Address of the ERC20 token used for payment 
+        address payer;
+        address recipient;
+        address paymentToken;
         uint256 amountInUSD;
-        uint256 frequency; // in seconds (e.g., 30 days for monthly)
+        uint256 frequency;
         uint256 nextPaymentDate;
-        bool hasExited ;
+        bool isRevoked;
     }
 
-    address public solver;
-    mapping(address => Subscription[]) private userSubscriptions; // Each user can have multiple subscriptions
+    bytes32 public vkHash;
+    address public SOLVER;
+    address public PUSH_CHANNEL_ADDRESS;
+    IERC20 public ChronoToken;
+    ChronofiPriceOracle public priceOracle;
+    mapping(address => PaymentIntent[]) private userIntents;
 
     mapping(address => address) specificAddressDelegate;
+    mapping(address => bool) public EarlyUser;
 
-    event SubscriptionCreated(address indexed user, uint256 indexed subscriptionId, string name, uint256 amountInUSD, address paymentToken);
-    event SubscriptionCancelled(address indexed user, uint256 indexed subscriptionId);
-    event PaymentProcessed(address indexed user, uint256 indexed subscriptionId, uint256 amountInTokens, uint256 nextPaymentDate, address paymentToken);
+    event IntentCreated(address indexed user, uint256 indexed intentId, string name, uint256 amountInUSD, address paymentToken);
+    event IntentRevoked(address indexed user, uint256 indexed intentId);
+    event PaymentProcessed(address indexed user, uint256 indexed intentId, uint256 amountInTokens, uint256 nextPaymentDate, address paymentToken);
 
     modifier onlySolver() {
-        require(msg.sender == solver, "Only the authorized solver can process payments");
+        require(msg.sender == SOLVER, "Only the authorized SOLVER can process payments");
         _;
     }
 
-    constructor(address _solver) {
-        solver = _solver;
+    constructor(
+        address _SOLVER, 
+        address _brevisRequest, 
+        address _chronoToken, 
+        address _priceOracle,
+        address _spInstance,
+        address _pushChannelAddress
+    ) BrevisAppZkOnly(_brevisRequest) Ownable(msg.sender) {
+        SOLVER = _SOLVER;
+        ChronoToken = IERC20(_chronoToken);
+        priceOracle = ChronofiPriceOracle(_priceOracle);
+        spInstance = ISP(_spInstance);
+        PUSH_CHANNEL_ADDRESS = _pushChannelAddress;
+        /*
+        
+        0xAFE08919dAC82E79ae274eb94441AA2447Bb13b6,
+        0x841ce48F9446C8E281D3F1444cB859b4A6D0738C,
+        0x303860D21B14B8d2072AF6FDf8345e1d9311630B,
+        0x462be78d6dfaCEF20C460edBa701F66935082ca8,
+        0x878c92FD89d8E0B93Dc0a3c907A2adc7577e39c5,
+        0xAFE08919dAC82E79ae274eb94441AA2447Bb13b6
+        
+
+        */
     }
 
-    /// @notice Creates a new subscription for the user
-    function createSubscription(
-        string memory _name,
-        address payable _recipient,
-        uint256 _amountInUSD,
-        uint256 _frequency,
-        address _paymentToken
-    ) external nonReentrant {
-        require(_recipient != address(0), "Invalid recipient address");
-        require(_amountInUSD > 0, "Amount should be greater than 0");
-        require(_frequency > 0, "Frequency must be greater than 0");
+    function setSchemaId(uint64 _schemaId) public onlyOwner {
+        schemaId = _schemaId;
+    }
 
-        Subscription memory newSubscription = Subscription({
+    function didReceiveAttestation(
+        address attester,
+        uint64 _schemaId,
+        uint64 attestationId,
+        bytes calldata extraData
+    ) external payable override {
+        require(schemaId == _schemaId, "Invalid Schema");
+
+        Attestation memory a = spInstance.getAttestation(attestationId);
+
+        (
+            string memory _name,
+            address _recipient,
+            address _paymentToken,
+            uint256 _amountInUSD,
+            uint256 _frequency
+        ) = abi.decode(a.data,(string,address,address,uint256,uint256));
+
+        PaymentIntent memory newIntent = PaymentIntent({
             name: _name,
-            subscriptionOwner: msg.sender,
+            payer: attester,
             recipient: _recipient,
             paymentToken: _paymentToken,
             amountInUSD: _amountInUSD,
             frequency: _frequency,
-            nextPaymentDate: block.timestamp ,
-            hasExited : false
+            nextPaymentDate: block.timestamp,
+            isRevoked: false
         });
 
-        userSubscriptions[msg.sender].push(newSubscription);
-        emit SubscriptionCreated(msg.sender, userSubscriptions[msg.sender].length - 1, _name, _amountInUSD, _paymentToken);
+        userIntents[attester].push(newIntent);
+
+        emit IntentCreated(attester, userIntents[attester].length - 1, _name, _amountInUSD, _paymentToken);
     }
 
-    /// @notice Cancels and removes an existing subscription
-    function cancelSubscription(uint256 _subscriptionId) external nonReentrant {
-        require(_subscriptionId < userSubscriptions[msg.sender].length, "Invalid subscription ID");
-        Subscription storage subscription = userSubscriptions[msg.sender][_subscriptionId];
-        require(subscription.subscriptionOwner == msg.sender, "Only subscription owner can cancel");
+    function convertUSDToToken(address _token, uint256 _amountInUSD) public view returns (uint256) {
+        uint256 tokenPriceInUSD = priceOracle.getLatestPrice(_token);
+        require(tokenPriceInUSD > 0, "Token price is zero");
 
-
-        subscription.hasExited = true;
-
-        emit SubscriptionCancelled(msg.sender, _subscriptionId);
+        return (_amountInUSD * (10 ** ERC20(_token).decimals()) * (10 ** ERC20(_token).decimals())) / tokenPriceInUSD;
     }
 
-    /// @notice Processes a subscription payment for a user, callable only by the authorized solver
-    function processPayment(address _user, uint256 _subscriptionId) external onlySolver nonReentrant {
-        require(_subscriptionId < userSubscriptions[_user].length, "Invalid subscription ID");
-        Subscription storage subscription = userSubscriptions[_user][_subscriptionId];
-        require(block.timestamp >= subscription.nextPaymentDate, "Payment not due yet");
-        require(subscription.amountInUSD > 0, "Subscription is inactive");
+    function processPayment(address _user, uint256 _intentId) external onlySolver nonReentrant {
+        require(_intentId < userIntents[_user].length, "Invalid intent ID");
+        PaymentIntent storage intent = userIntents[_user][_intentId];
+        require(block.timestamp >= intent.nextPaymentDate, "Payment not due yet");
+        require(!intent.isRevoked, "Intent has been revoked");
 
-        // Payment in ERC20 token directly from user
-        IERC20 token = IERC20(subscription.paymentToken);
-        require(token.balanceOf(_user) >= subscription.amountInUSD, "Insufficient token balance for subscription");
-        
-        if(specificAddressDelegate[subscription.recipient] == address(0)){
-        // Transfer subscription amount from user to recipient
-        token.safeTransferFrom(_user, subscription.recipient, subscription.amountInUSD);
+        uint256 amountInTokens = convertUSDToToken(intent.paymentToken, intent.amountInUSD);
+        IERC20 token = IERC20(intent.paymentToken);
+        require(token.balanceOf(_user) >= amountInTokens, "Insufficient token balance");
+
+        if (specificAddressDelegate[intent.recipient] == address(0)) {
+            token.safeTransferFrom(_user, intent.recipient, amountInTokens);
+
+            IPUSHCommInterface(0x0C34d54a09CFe75BCcd878A469206Ae77E0fe6e7).sendNotification(
+            PUSH_CHANNEL_ADDRESS, // from channel
+            intent.payer, // to recipient, put address(this) in case you want Broadcast or Subset. For Targetted put the address to which you want to send
+            bytes(
+                string(
+                    // We are passing identity here: https://docs.epns.io/developers/developer-guides/sending-notifications/advanced/notification-payload-types/identity/payload-identity-implementations
+                    abi.encodePacked(
+                        "0", // this is notification identity: https://docs.epns.io/developers/developer-guides/sending-notifications/advanced/notification-payload-types/identity/payload-identity-implementations
+                        "+", // segregator
+                        "3", // this is payload type: https://docs.epns.io/developers/developer-guides/sending-notifications/advanced/notification-payload-types/payload (1, 3 or 4) = (Broadcast, targetted or subset)
+                        "+", // segregator
+                        "Payment By ChronoFi", // this is notificaiton title
+                        "+", // segregator
+                        "a Payment of ",
+                        amountInTokens / 10**18,
+                        "in ",
+                        intent.paymentToken,
+                        " Payment Token Was made from your account To  :",
+                        addressToString(intent.recipient),
+                        " By ChronoFi"
+                    )
+                )
+            )
+        );
+
+            IPUSHCommInterface(0x0C34d54a09CFe75BCcd878A469206Ae77E0fe6e7).sendNotification(
+            PUSH_CHANNEL_ADDRESS, // from channel
+            intent.recipient, // to recipient, put address(this) in case you want Broadcast or Subset. For Targetted put the address to which you want to send
+            bytes(
+                string(
+                    // We are passing identity here: https://docs.epns.io/developers/developer-guides/sending-notifications/advanced/notification-payload-types/identity/payload-identity-implementations
+                    abi.encodePacked(
+                        "0", // this is notification identity: https://docs.epns.io/developers/developer-guides/sending-notifications/advanced/notification-payload-types/identity/payload-identity-implementations
+                        "+", // segregator
+                        "3", // this is payload type: https://docs.epns.io/developers/developer-guides/sending-notifications/advanced/notification-payload-types/payload (1, 3 or 4) = (Broadcast, targetted or subset)
+                        "+", // segregator
+                        "Payment By ChronoFi", // this is notificaiton title
+                        "+", // segregator
+                        "a Payment of ",
+                        amountInTokens / 10**18,
+                        " in ",
+                        intent.paymentToken,
+                        " Token was Recevied to your account From :",
+                        addressToString(intent.payer),
+                        " By ChronoFi"
+                    )
+                )
+            )
+        );
         } else {
-            (bool success,) = subscription.recipient.delegatecall(abi.encodeWithSignature("processPayment(address,uint256)",_user,_subscriptionId));
-            require(success,"Delegate Called Failed");
+            (bool success, ) = intent.recipient.delegatecall(abi.encodeWithSignature("processPayment(address,uint256)", _user, _intentId));
+            require(success, "Delegate call failed");
         }
 
-        // Update the next payment date
-        subscription.nextPaymentDate += subscription.frequency;
-        emit PaymentProcessed(_user, _subscriptionId, subscription.amountInUSD, subscription.nextPaymentDate, subscription.paymentToken);
+        if (!EarlyUser[msg.sender]) {
+            ChronoToken.transferFrom(_user, SOLVER, (intent.amountInUSD * 3 * 1e18) / 1000);
+        }
+
+        intent.nextPaymentDate += intent.frequency;
+        emit PaymentProcessed(_user, _intentId, amountInTokens, intent.nextPaymentDate, intent.paymentToken);
     }
 
-    /// @notice Returns the subscription details for a user
-    function getSubscription(address _user, uint256 _subscriptionId) external view returns (
-        string memory name,
-        address subscriptionOwner,
-        address recipient,
-        address paymentToken,
-        uint256 amountInUSD,
-        uint256 frequency,
-        uint256 nextPaymentDate
-    ) {
-        require(_subscriptionId < userSubscriptions[_user].length, "Invalid subscription ID");
-        Subscription memory subscription = userSubscriptions[_user][_subscriptionId];
-        return (
-            subscription.name,
-            subscription.subscriptionOwner,
-            subscription.recipient,
-            subscription.paymentToken,
-            subscription.amountInUSD,
-            subscription.frequency,
-            subscription.nextPaymentDate
-        );
+    function revokeIntent(address _user, uint256 _intentId) external {
+        require(_intentId < userIntents[_user].length, "Invalid intent ID");
+        PaymentIntent storage intent = userIntents[_user][_intentId];
+        require(!intent.isRevoked, "Intent has already been revoked");
+        intent.isRevoked = true;
+        emit IntentRevoked(_user, _intentId);
     }
 
-    function setSpecificAddressDelegate(address recipient,address delegateAddress)public onlySolver{
+    function getIntent(address _user, uint256 _intentId) external view returns (PaymentIntent memory) {
+        require(_intentId < userIntents[_user].length, "Invalid intent ID");
+        return userIntents[_user][_intentId];
+    }
+
+    function getUserIntents(address _user) public view returns (PaymentIntent[] memory) {
+        return userIntents[_user];
+    }
+
+    function setSpecificAddressDelegate(address recipient, address delegateAddress) public onlyOwner {
         specificAddressDelegate[recipient] = delegateAddress;
     }
 
-    function isSubscriptionActive(address _user, uint256 _subscriptionId) external view returns (bool ) {
-        require(_subscriptionId < userSubscriptions[_user].length, "Invalid subscription ID");
-        Subscription storage subscription = userSubscriptions[_user][_subscriptionId];
-        return subscription.amountInUSD > 0 && block.timestamp < subscription.nextPaymentDate ;
+    function isIntentActive(address _user, uint256 _intentId) external view returns (bool) {
+        require(_intentId < userIntents[_user].length, "Invalid intent ID");
+        PaymentIntent memory intent = userIntents[_user][_intentId];
+        return !intent.isRevoked && intent.amountInUSD > 0 && block.timestamp < intent.nextPaymentDate;
     }
 
-    function isExecutable(address _user,uint256 _subscriptionId) external view returns(bool ){
-        require(_subscriptionId < userSubscriptions[_user].length, "Invalid subscription ID");
-        Subscription storage subscription = userSubscriptions[_user][_subscriptionId];
-        return !subscription.hasExited && subscription.amountInUSD > 0 && block.timestamp >= subscription.nextPaymentDate ;
+    function isPaymentExecutable(address _user, uint256 _intentId) external view returns (bool) {
+        require(_intentId < userIntents[_user].length, "Invalid intent ID");
+        PaymentIntent memory intent = userIntents[_user][_intentId];
+        return !intent.isRevoked && block.timestamp >= intent.nextPaymentDate;
     }
 
-    /// @notice Checks if the user has enough balance for the next subscription payment
-    function hasEnoughBalance(address _user, uint256 _subscriptionId) external view returns (bool) {
-        require(_subscriptionId < userSubscriptions[_user].length, "Invalid subscription ID");
-        Subscription storage subscription = userSubscriptions[_user][_subscriptionId];
+    function hasEnoughBalance(address _user, uint256 _intentId) public view returns (bool) {
+        require(_intentId < userIntents[_user].length, "Invalid intent ID");
+        PaymentIntent memory intent = userIntents[_user][_intentId];
         
-        // Ensure the subscription is active
-        if (subscription.hasExited || subscription.amountInUSD == 0) {
+        if (intent.isRevoked) {
             return false;
         }
 
-        // Check the user's token balance
-        IERC20 token = IERC20(subscription.paymentToken);
-        return token.balanceOf(_user) >= subscription.amountInUSD && token.allowance(_user, address(this)) >= subscription.amountInUSD;
+        IERC20 token = IERC20(intent.paymentToken);
+        uint256 tokenAmount = convertUSDToToken(intent.paymentToken, intent.amountInUSD);
+        return token.balanceOf(_user) >= tokenAmount && token.allowance(_user, address(this)) >= tokenAmount;
+    }
+
+    function setVkHash(bytes32 _vkHash) external onlyOwner {
+        vkHash = _vkHash;
+    }
+
+    ////////////////////////////////////////////////////////
+    /////////////////// SIGN Protocol //////////////////////
+    ////////////////////////////////////////////////////////
+
+    function didReceiveAttestation(
+        address attester,
+        uint64, // schemaId
+        uint64 attestationId,
+        IERC20 reSOLVERFeeERC20Token,
+        uint256 reSOLVERFeeERC20Amount,
+        bytes calldata extraData
+    ) external override {
+        // Not implemented
+    }
+
+    function didReceiveRevocation(
+        address attester,
+        uint64, // schemaId
+        uint64 attestationId,
+        bytes calldata extraData
+    ) external payable override {
+        // Not implemented
+    }
+
+    function didReceiveRevocation(
+        address attester,
+        uint64, // schemaId
+        uint64 attestationId,
+        IERC20 reSOLVERFeeERC20Token,
+        uint256 reSOLVERFeeERC20Amount,
+        bytes calldata extraData
+    ) external override {
+        // Not implemented
+    }
+
+    function addressToString(
+        address _address
+    ) internal pure returns (string memory) {
+        bytes32 _bytes = bytes32(uint256(uint160(_address)));
+        bytes memory HEX = "0123456789abcdef";
+        bytes memory _string = new bytes(42);
+        _string[0] = "0";
+        _string[1] = "x";
+        for (uint i = 0; i < 20; i++) {
+            _string[2 + i * 2] = HEX[uint8(_bytes[i + 12] >> 4)];
+            _string[3 + i * 2] = HEX[uint8(_bytes[i + 12] & 0x0f)];
+        }
+        return string(_string);
     }
 }
 
+// PUSH Comm Contract Interface
+interface IPUSHCommInterface {
+    function sendNotification(
+        address _channel,
+        address _recipient,
+        bytes calldata _identity
+    ) external;
+}
 
+
+   
+
+
+//

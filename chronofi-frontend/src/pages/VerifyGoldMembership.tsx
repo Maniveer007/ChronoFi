@@ -6,8 +6,6 @@ import { sepolia } from "wagmi/chains";
 import { abi } from "@/lib/abi/BervisRequestAbi";
 import { useGlobalContext } from "@/lib/context/GlobalContextProvider";
 
-// import { Contract, Log } from 'ethers';
-
 const client = createPublicClient({
   chain: sepolia,
   transport: http(),
@@ -17,70 +15,71 @@ const VerifyGoldMembership = () => {
   const { data: hash, writeContract, isPending } = useWriteContract();
   const { address, chainId, chain } = useAccount();
   const { BervisRequestAddress } = useGlobalContext();
-  console.log("Address: ", address);
-  console.log("isPending ", isPending);
-  console.log("Hash ", hash);
+  const [isLoading, setIsLoading] = useState(false);
 
   const verifyMembership = async () => {
     try {
-      console.log("Loading...");
-
-      console.log("====================================");
-      console.log(abi);
-      console.log("====================================");
+      setIsLoading(true);
 
       if (!address) {
         window.alert("Please connect your wallet");
-      } else {
-        const res = await axios.post(
-          "http://www.localhost:8080/request-verify-with-bervis",
-          { address }
-        );
-
-        console.log(res.data);
-
-        console.log({
-          address: BervisRequestAddress,
-          abi: abi,
-          functionName: "sendRequest",
-          args: [
-            res.data._0,
-            res.data._1,
-            res.data._2,
-            res.data._3,
-            res.data._4,
-          ],
-          chain: chain,
-          account: address,
-          value: res.data._5.value,
-        });
-
-        console.log("contract is yet to be signed ");
-
-        const result = writeContract({
-          address: BervisRequestAddress,
-          abi: abi,
-          functionName: "sendRequest",
-          args: [
-            res.data._0,
-            res.data._1,
-            res.data._2,
-            res.data._3,
-            res.data._4,
-          ],
-          chain: chain,
-          account: address,
-          value: res.data._5.value,
-        });
-
-        console.log(hash);
-
-        console.log(result);
+        setIsLoading(false);
+        return;
       }
+
+      console.log("sent request to backend");
+
+      const res = await axios.post(
+        "http://www.localhost:8080/request-verify-with-bervis",
+        { address }
+      );
+      console.log("got response from backend");
+
+      console.log(res.data);
+
+      const result = await writeContract({
+        address: BervisRequestAddress,
+        abi: abi,
+        functionName: "sendRequest",
+        args: [res.data._0, res.data._1, res.data._2, res.data._3, res.data._4],
+        chain: chain,
+        account: address,
+        value: res.data._5.value,
+      });
     } catch (error) {
       console.log(error);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full h-screen bg-gradient-to-b from-blue-500 to-purple-600">
+        <div className="text-center space-y-6">
+          <div className="animate-bounce">
+            <span className="text-6xl">🌟</span>
+          </div>
+          <h2 className="text-4xl font-bold text-white">
+            Verifying Your Gold Status
+          </h2>
+          <div className="flex space-x-3">
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-100"></div>
+            <div className="w-3 h-3 bg-white rounded-full animate-pulse delay-200"></div>
+          </div>
+          <div className="max-w-md text-white text-lg">
+            <p className="mb-4">
+              Checking your on-chain history with Bervis...
+            </p>
+            <p className="text-yellow-200">
+              This magical moment will be over soon! ✨
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-screen bg-gradient-to-b from-white to-gray-100 p-8">
@@ -111,7 +110,8 @@ const VerifyGoldMembership = () => {
 
         <button
           onClick={verifyMembership}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transform transition-all hover:scale-105 shadow-lg"
+          disabled={isLoading}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transform transition-all hover:scale-105 shadow-lg disabled:opacity-50"
         >
           Verify Gold Membership
         </button>
