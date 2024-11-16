@@ -38,7 +38,7 @@ function SubscriptionPage() {
   const { data } = useReadContract({
     address: ChronoFiAddress,
     abi: ChronoFiAbi,
-    functionName: "getSubscription",
+    functionName: "getIntent",
     args: [address, id],
     chainId: chainId,
   });
@@ -75,6 +75,7 @@ function SubscriptionPage() {
   const currentTime = Date.now();
   const nextPaymentDue = new Date(nextPaymentDate * 1000);
   const isDue = nextPaymentDate < currentTime;
+  console.log(isDue);
 
   const nextPaymentLabel = hasExited ? (
     <span className="text-red-500 flex items-center">
@@ -155,7 +156,7 @@ function SubscriptionPage() {
         </div>
       )}
 
-      {isExecutable && !hasEnoughBalance && (
+      {isDue && !hasEnoughBalance && (
         <div className="bg-red-100 text-red-800 p-4 rounded-md space-y-4">
           <p className="flex items-center space-x-2">
             <FaExclamationTriangle className="text-yellow-500" />
@@ -184,14 +185,14 @@ function SubscriptionPage() {
         </div>
       )}
 
-      {isDue && (
+      {/* {isDue && (
         <div className="bg-yellow-100 text-yellow-800 p-4 rounded-md">
           <p>
             <FaExclamationTriangle className="inline mr-2" /> Payment is due!
             Ensure sufficient funds or increase allowance as needed.
           </p>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

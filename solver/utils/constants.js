@@ -1,3 +1,3 @@
-const ChronoFiAddress = "0xcc9B6594D747053B89135e3cb39cE4e8BC937373";
+const ChronoFiAddress = "0x53cc6464b19fdA899cbAE9eDdd7481CAea16fC20";
 
 module.exports = { ChronoFiAddress };

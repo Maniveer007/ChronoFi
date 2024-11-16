@@ -154,7 +154,7 @@ async function RunAttestorNode() {
             log[0].data
           );
 
-          const subscription = await contract.getSubscription(
+          const subscription = await contract.getIntent(
             data.address,
             data.subscriptionId
           );

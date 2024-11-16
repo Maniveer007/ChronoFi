@@ -7,12 +7,12 @@ const SubscriptionCreatedListener = async (socketManager) => {
 
   const provider = new ethers.providers.JsonRpcProvider(process.env.INFURA_URL);
   // Event Listener
-  console.log("SubscriptionCreated Listener Initialized");
+  console.log("IntentCreated Listener Initialized");
 
   contract.on(
-    "SubscriptionCreated",
+    "IntentCreated",
     async (user, subscriptionId, name, amountInUSD, paymentToken, event) => {
-      console.log("SubscriptionCreated Event Detected:");
+      console.log("IntentCreated Event Detected:");
       console.log("User Address:", user);
       console.log("Subscription ID:", subscriptionId.toString());
       console.log("Subscription Name:", name);

@@ -10,7 +10,10 @@ import {
 export const transactionRoutes = Router();
 
 transactionRoutes.get("/get-transactions", getTransactions);
-transactionRoutes.get("/get-transactions-by-address", getTransactionsByAddress);
+transactionRoutes.post(
+  "/get-transactions-by-address",
+  getTransactionsByAddress
+);
 transactionRoutes.get(
   "/get-transaction-by-subscription-id",
   getTransactionBySubscriptionId

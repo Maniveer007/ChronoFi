@@ -6,31 +6,51 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { useAccount } from "wagmi";
+import { chroniclePriceFeed } from "@/lib/chroniclePriceFeed/chroniclePriceFeed";
+
+interface Transaction {
+  _id: string;
+  nameofSubscription: string;
+  amountinTokens: number;
+  paymentToken: string;
+  transactionUrl: string;
+  transationAt: string;
+}
 
 export default function Transactions() {
-  const transactions = [
-    {
-      id: 1,
-      name: "Monthly Rent",
-      amount: "1 ETH",
-      date: "2023-04-01",
-      link: "https://etherscan.io/tx/0x123...",
-    },
-    {
-      id: 2,
-      name: "Subscription",
-      amount: "0.1 ETH",
-      date: "2023-04-15",
-      link: "https://etherscan.io/tx/0x456...",
-    },
-    {
-      id: 3,
-      name: "Utility Bill",
-      amount: "0.5 ETH",
-      date: "2023-04-30",
-      link: "https://etherscan.io/tx/0x789...",
-    },
-  ];
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const { address } = useAccount();
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const response = await axios.post(
+          `http://localhost:8080/api/transactions/get-transactions-by-address/`,
+          { address }
+        );
+        console.log("====================================");
+        console.log(response);
+        console.log("====================================");
+        setTransactions(response.data);
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+      }
+    };
+
+    if (address) {
+      fetchTransactions();
+    }
+  }, [address]);
+
+  const getTokenImage = (token: string) => {
+    const tokenDetails = chroniclePriceFeed.find(
+      (t) => t.address.toLowerCase() === token.toLowerCase()
+    );
+    return tokenDetails ? tokenDetails.logo : "/default-token.svg";
+  };
 
   return (
     <div className="max-w-4xl mx-auto mt-12 p-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg text-white">
@@ -57,7 +77,7 @@ export default function Transactions() {
         <TableBody>
           {transactions.map((tx, index) => (
             <TableRow
-              key={tx.id}
+              key={tx._id}
               className={`rounded-lg ${
                 index % 2 === 0
                   ? "bg-gradient-to-r from-blue-700 via-purple-700 to-blue-700"
@@ -65,22 +85,29 @@ export default function Transactions() {
               } hover:scale-[1.01] transition-transform duration-300`}
             >
               <TableCell className="py-4 px-6 text-base text-white font-medium">
-                {tx.name}
+                {tx.nameofSubscription}
               </TableCell>
               <TableCell className="py-4 px-6 text-base text-blue-300 font-semibold">
-                {tx.amount}
+                <div className="flex items-center gap-2">
+                  <img
+                    src={getTokenImage(tx.paymentToken)}
+                    alt={tx.paymentToken}
+                    className="w-6 h-6"
+                  />
+                  {(tx.amountinTokens / 10 ** 18).toFixed(2)}
+                </div>
               </TableCell>
               <TableCell className="py-4 px-6 text-base text-gray-300">
-                {tx.date}
+                {new Date(tx.transationAt).toLocaleDateString()}
               </TableCell>
               <TableCell className="py-4 px-6 text-base">
                 <a
-                  href={tx.link}
+                  href={`https://eth-sepolia.blockscout.com/tx/${tx.transactionUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-300 hover:text-blue-500 underline transition duration-200"
                 >
-                  View on Etherscan
+                  View on Explorer
                 </a>
               </TableCell>
             </TableRow>

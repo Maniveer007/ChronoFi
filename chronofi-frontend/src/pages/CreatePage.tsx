@@ -21,11 +21,7 @@ import { useGlobalContext } from "@/lib/context/GlobalContextProvider";
 import { ChronoFiAbi } from "@/lib/abi/ChronoFiAbi";
 import { chroniclePriceFeed } from "@/lib/chroniclePriceFeed/chroniclePriceFeed";
 import { ChronofiPriceOracleABI } from "@/lib/abi/ChronofiPriceOracleABI";
-import {
-  SignProtocolClient,
-  SpMode,
-  EvmChains,
-} from "@ethsign/sp-sdk";
+import { SignProtocolClient, SpMode, EvmChains } from "@ethsign/sp-sdk";
 import { toast } from "react-toastify";
 
 export default function CreateSubscription() {
@@ -87,6 +83,18 @@ export default function CreateSubscription() {
       return;
     }
 
+    console.log({
+      schemaId: schemaId,
+      data: {
+        name,
+        recipient,
+        paymentToken: tokenDetail?.address,
+        amountInUSD,
+        frequency: frequency * Number(frequencyUnit),
+      },
+      indexingValue: address,
+    });
+
     await client.createAttestation({
       schemaId: schemaId,
       data: {
@@ -103,7 +111,7 @@ export default function CreateSubscription() {
   };
 
   return (
-    <Card className="w-full h-full max-w-3xl mx-auto mt-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-xl rounded-lg">
+    <Card className="w-full h-100vh max-w-3xl mx-auto mt-16 bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-xl rounded-lg">
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-white">
           Create Subscription
@@ -216,10 +224,7 @@ export default function CreateSubscription() {
           </div>
           {paymentToken === "Other" && (
             <div className="space-y-2">
-              <Label
-                htmlFor="customToken"
-                className="text-white font-semibold"
-              >
+              <Label htmlFor="customToken" className="text-white font-semibold">
                 Custom Token Address
               </Label>
               <Input

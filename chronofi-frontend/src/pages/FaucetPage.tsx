@@ -14,10 +14,11 @@ import { chroniclePriceFeed } from "@/lib/chroniclePriceFeed/chroniclePriceFeed"
 import { useAccount, useWriteContract } from "wagmi";
 import { ERC20ABI } from "@/lib/abi/ERC20Abi";
 import { useGlobalContext } from "@/lib/context/GlobalContextProvider";
+import chrono from "/CHRONO.png";
 
 export default function FaucetPage() {
   const { address: userAddress, chain, chainId } = useAccount();
-  const { ChronoFiAddress, isEarlyUser } = useGlobalContext();
+  const { ChronoToken, isEarlyUser } = useGlobalContext();
   const { writeContractAsync } = useWriteContract();
 
   console.log("isEarlyUser", isEarlyUser);
@@ -30,13 +31,25 @@ export default function FaucetPage() {
     setClaimingStates((prev) => ({ ...prev, [tokenId]: true }));
 
     const mintAmount = isEarlyUser
-      ? chroniclePriceFeed[tokenId].amount * 2
-      : chroniclePriceFeed[tokenId].amount;
+      ? chroniclePriceFeed[tokenId]?.amount * 2
+      : chroniclePriceFeed[tokenId]?.amount;
 
     // Simulating API call
 
+    if (tokenId === 11) {
+      await writeContractAsync({
+        address: ChronoToken,
+        abi: ERC20ABI,
+        functionName: "mint",
+        args: [userAddress, 10n ** 19n],
+        chain: chain,
+        account: userAddress,
+      });
+
+      return;
+    }
     await writeContractAsync({
-      address: chroniclePriceFeed[tokenId].address,
+      address: chroniclePriceFeed[tokenId]?.address,
       abi: ERC20ABI,
       functionName: "mint",
       args: [userAddress, mintAmount * 10 ** 18],
@@ -114,6 +127,44 @@ export default function FaucetPage() {
                   </Button>
                 </div>
               ))}
+
+              <div
+                key={11}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-inner">
+                    <img
+                      src={chrono}
+                      alt={`${"Chrono"} logo`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {"Chrono"}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {isEarlyUser ? 100 * 2 : 100} tokens
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleClaim(11)}
+                  disabled={claimingStates[11]}
+                  className={`transition-all duration-200 ease-in-out transform ${
+                    claimingStates[11]
+                      ? "scale-95 opacity-75"
+                      : "hover:scale-105"
+                  }`}
+                >
+                  {claimingStates[11] ? (
+                    <Skeleton className="h-5 w-20" />
+                  ) : (
+                    "Claim"
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

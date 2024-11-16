@@ -50,7 +50,7 @@ const runVerifyNode = async () => {
         socket,
         nodeIndex
       );
-    }, 2 * 60 * 1000);
+    }, 1 * 60 * 1000);
   });
 
   socket.on("SolversUpdateSubscriptions", async () => {

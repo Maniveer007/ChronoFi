@@ -22,7 +22,7 @@ const retriveOldLogs = async (previousBlock, socketManager) => {
       // Define the filter for the current chunk
       const filter = {
         topics: [
-          "0x7bf302792fcbb78145915736d08381b36762837975fdf0c8afafa0ff4818cf7b",
+          "0x1836d2d3c9a3a22ed53ac072a1f6f91be83fa138a78215db639ad7cf11fe4ee1",
         ],
         address: ChronoFiAddress,
         fromBlock: startBlock,
